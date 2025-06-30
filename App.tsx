@@ -8,6 +8,7 @@ import "./global.css"
 import { ExploreScreen } from './src/screens/ExploreScreen';
 import { WatchlistScreen } from './src/screens/WatchlistScreen';
 import { ProductScreen } from "./src/screens/ProductScreen"
+import { ViewAllScreen } from './src/screens/ViewAllScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -31,6 +32,13 @@ function ExploreStack() {
           headerTintColor: '#000000',
         }}
       />
+      <Stack.Screen 
+        name="ViewAll" 
+        component={ViewAllScreen}
+        options={{
+          headerShown: false,
+        }}
+      />
     </Stack.Navigator>
   );
 }
@@ -52,6 +60,13 @@ function WatchlistStack() {
             backgroundColor: '#ffffff',
           },
           headerTintColor: '#000000',
+        }}
+      />
+      <Stack.Screen 
+        name="ViewAll" 
+        component={ViewAllScreen}
+        options={{
+          headerShown: false,
         }}
       />
     </Stack.Navigator>
