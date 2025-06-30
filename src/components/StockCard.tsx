@@ -1,0 +1,51 @@
+import React from 'react';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { Stock } from '../types';
+
+interface StockCardProps {
+  stock: Stock;
+  onPress: (stock: Stock) => void;
+}
+
+export const StockCard: React.FC<StockCardProps> = ({ stock, onPress }) => {
+  const isPositive = stock.changePercent >= 0;
+  
+  return (
+    <TouchableOpacity
+      className="bg-white dark:bg-gray-800 rounded-lg p-4 mr-3 shadow-sm border border-gray-100 dark:border-gray-700"
+      onPress={() => onPress(stock)}
+      activeOpacity={0.7}
+    >
+      <View className="flex-row justify-between items-start mb-2">
+        <View className="flex-1">
+          <Text className="text-lg font-bold text-gray-900 dark:text-white">
+            {stock.symbol}
+          </Text>
+          <Text className="text-sm text-gray-600 dark:text-gray-400" numberOfLines={2}>
+            {stock.name}
+          </Text>
+        </View>
+      </View>
+      
+      <View className="flex-row justify-between items-center">
+        <Text className="text-lg font-semibold text-gray-900 dark:text-white">
+          ₹{stock.currentPrice.toFixed(2)}
+        </Text>
+        <View className={`px-2 py-1 rounded-md ${isPositive ? 'bg-green-100 dark:bg-green-900' : 'bg-red-100 dark:bg-red-900'}`}>
+          <Text className={`text-sm font-medium ${isPositive ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'}`}>
+            {isPositive ? '+' : ''}{stock.changePercent.toFixed(2)}%
+          </Text>
+        </View>
+      </View>
+      
+      <View className="flex-row justify-between items-center mt-1">
+        <Text className="text-xs text-gray-500 dark:text-gray-400">
+          Vol: {(stock.volume / 1000).toFixed(0)}K
+        </Text>
+        <Text className={`text-xs font-medium ${isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+          {isPositive ? '+' : ''}₹{stock.change.toFixed(2)}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+}; 
