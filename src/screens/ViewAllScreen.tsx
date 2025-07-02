@@ -3,11 +3,11 @@ import { View, Text, FlatList, ActivityIndicator, TouchableOpacity } from 'react
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { StockCard } from '../components/StockCard';
-import { getTopGainers, getTopLosers, getAllStocks } from '../services/stockService';
+import { getTopGainers, getTopLosers, getMostActivelyTraded, getAllStocks } from '../services/stockService';
 import { Stock } from '../types';
 
 interface ViewAllScreenRouteParams {
-  type: 'gainers' | 'losers' | 'all';
+  type: 'gainers' | 'losers' | 'most_actively_traded' | 'all';
 }
 
 const ITEMS_PER_PAGE = 10;
@@ -26,33 +26,38 @@ export const ViewAllScreen: React.FC = () => {
     loadStocks();
   }, [type]);
 
-  const loadStocks = () => {
+  const loadStocks = async () => {
     setLoading(true);
     setCurrentPage(1);
     setHasMoreData(true);
     
-    // Simulate API call delay
-    setTimeout(() => {
+    try {
       let stockData: Stock[] = [];
       
       switch (type) {
         case 'gainers':
-          stockData = getTopGainers();
+          stockData = await getTopGainers();
           break;
         case 'losers':
-          stockData = getTopLosers();
+          stockData = await getTopLosers();
+          break;
+        case 'most_actively_traded':
+          stockData = await getMostActivelyTraded();
           break;
         case 'all':
-          stockData = getAllStocks();
+          stockData = await getAllStocks();
           break;
         default:
-          stockData = getAllStocks();
+          stockData = await getAllStocks();
       }
       
       setStocks(stockData);
       setHasMoreData(stockData.length > ITEMS_PER_PAGE);
+    } catch (error) {
+      console.error('Error loading stocks:', error);
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
   };
 
   const handleStockPress = (stock: Stock) => {
@@ -119,6 +124,8 @@ export const ViewAllScreen: React.FC = () => {
         return 'Top Gainers';
       case 'losers':
         return 'Top Losers';
+      case 'most_actively_traded':
+        return 'Most Actively Traded';
       case 'all':
         return 'All Stocks';
       default:

@@ -1,505 +1,461 @@
-import { Stock, StockChartData } from '../types';
+import { Stock, StockChartData, StockInfo, SearchResult } from '../types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Mock stock data
-const mockStocks: Stock[] = [
-  {
-    id: '1',
-    symbol: 'RELIANCE',
-    name: 'Reliance Industries Ltd',
-    currentPrice: 2456.80,
-    change: 45.20,
-    changePercent: 1.87,
-    marketCap: 1650000,
-    peRatio: 18.5,
-    volume: 1250000,
-    high: 2480.00,
-    low: 2410.00,
-    open: 2415.00,
-    previousClose: 2411.60,
-  },
-  {
-    id: '2',
-    symbol: 'TCS',
-    name: 'Tata Consultancy Services Ltd',
-    currentPrice: 3890.50,
-    change: -23.40,
-    changePercent: -0.60,
-    marketCap: 1420000,
-    peRatio: 25.2,
-    volume: 890000,
-    high: 3920.00,
-    low: 3870.00,
-    open: 3910.00,
-    previousClose: 3913.90,
-  },
-  {
-    id: '3',
-    symbol: 'HDFC',
-    name: 'HDFC Bank Ltd',
-    currentPrice: 1650.75,
-    change: 32.15,
-    changePercent: 1.99,
-    marketCap: 920000,
-    peRatio: 16.8,
-    volume: 2100000,
-    high: 1665.00,
-    low: 1620.00,
-    open: 1625.00,
-    previousClose: 1618.60,
-  },
-  {
-    id: '4',
-    symbol: 'INFY',
-    name: 'Infosys Ltd',
-    currentPrice: 1456.90,
-    change: -18.70,
-    changePercent: -1.27,
-    marketCap: 610000,
-    peRatio: 22.1,
-    volume: 1500000,
-    high: 1475.00,
-    low: 1440.00,
-    open: 1470.00,
-    previousClose: 1475.60,
-  },
-  {
-    id: '5',
-    symbol: 'ICICIBANK',
-    name: 'ICICI Bank Ltd',
-    currentPrice: 890.25,
-    change: 15.80,
-    changePercent: 1.81,
-    marketCap: 620000,
-    peRatio: 15.3,
-    volume: 1800000,
-    high: 895.00,
-    low: 875.00,
-    open: 880.00,
-    previousClose: 874.45,
-  },
-  {
-    id: '6',
-    symbol: 'HINDUNILVR',
-    name: 'Hindustan Unilever Ltd',
-    currentPrice: 2450.00,
-    change: -45.20,
-    changePercent: -1.81,
-    marketCap: 580000,
-    peRatio: 45.2,
-    volume: 450000,
-    high: 2500.00,
-    low: 2440.00,
-    open: 2490.00,
-    previousClose: 2495.20,
-  },
-  {
-    id: '7',
-    symbol: 'ITC',
-    name: 'ITC Ltd',
-    currentPrice: 420.50,
-    change: 8.90,
-    changePercent: 2.16,
-    marketCap: 520000,
-    peRatio: 18.9,
-    volume: 3200000,
-    high: 425.00,
-    low: 415.00,
-    open: 415.50,
-    previousClose: 411.60,
-  },
-  {
-    id: '8',
-    symbol: 'SBIN',
-    name: 'State Bank of India',
-    currentPrice: 650.75,
-    change: -12.30,
-    changePercent: -1.85,
-    marketCap: 580000,
-    peRatio: 12.5,
-    volume: 2800000,
-    high: 665.00,
-    low: 645.00,
-    open: 660.00,
-    previousClose: 663.05,
-  },
-  {
-    id: '9',
-    symbol: 'BHARTIARTL',
-    name: 'Bharti Airtel Ltd',
-    currentPrice: 1120.40,
-    change: 28.60,
-    changePercent: 2.62,
-    marketCap: 620000,
-    peRatio: 28.5,
-    volume: 950000,
-    high: 1135.00,
-    low: 1105.00,
-    open: 1110.00,
-    previousClose: 1091.80,
-  },
-  {
-    id: '10',
-    symbol: 'AXISBANK',
-    name: 'Axis Bank Ltd',
-    currentPrice: 980.25,
-    change: -15.75,
-    changePercent: -1.58,
-    marketCap: 300000,
-    peRatio: 14.2,
-    volume: 1200000,
-    high: 995.00,
-    low: 975.00,
-    open: 990.00,
-    previousClose: 996.00,
-  },
-  {
-    id: '11',
-    symbol: 'KOTAKBANK',
-    name: 'Kotak Mahindra Bank Ltd',
-    currentPrice: 1850.90,
-    change: 35.40,
-    changePercent: 1.95,
-    marketCap: 370000,
-    peRatio: 20.8,
-    volume: 650000,
-    high: 1865.00,
-    low: 1820.00,
-    open: 1825.00,
-    previousClose: 1815.50,
-  },
-  {
-    id: '12',
-    symbol: 'ASIANPAINT',
-    name: 'Asian Paints Ltd',
-    currentPrice: 3200.75,
-    change: -25.50,
-    changePercent: -0.79,
-    marketCap: 310000,
-    peRatio: 52.3,
-    volume: 280000,
-    high: 3230.00,
-    low: 3180.00,
-    open: 3210.00,
-    previousClose: 3226.25,
-  },
-  {
-    id: '13',
-    symbol: 'MARUTI',
-    name: 'Maruti Suzuki India Ltd',
-    currentPrice: 9850.50,
-    change: 125.80,
-    changePercent: 1.29,
-    marketCap: 290000,
-    peRatio: 22.5,
-    volume: 180000,
-    high: 9900.00,
-    low: 9750.00,
-    open: 9780.00,
-    previousClose: 9724.70,
-  },
-  {
-    id: '14',
-    symbol: 'ULTRACEMCO',
-    name: 'UltraTech Cement Ltd',
-    currentPrice: 8500.25,
-    change: -45.30,
-    changePercent: -0.53,
-    marketCap: 250000,
-    peRatio: 18.7,
-    volume: 120000,
-    high: 8550.00,
-    low: 8450.00,
-    open: 8520.00,
-    previousClose: 8545.55,
-  },
-  {
-    id: '15',
-    symbol: 'SUNPHARMA',
-    name: 'Sun Pharmaceutical Industries Ltd',
-    currentPrice: 1250.80,
-    change: 18.90,
-    changePercent: 1.53,
-    marketCap: 300000,
-    peRatio: 25.8,
-    volume: 850000,
-    high: 1265.00,
-    low: 1235.00,
-    open: 1240.00,
-    previousClose: 1231.90,
-  },
-  {
-    id: '16',
-    symbol: 'TATAMOTORS',
-    name: 'Tata Motors Ltd',
-    currentPrice: 850.40,
-    change: -12.60,
-    changePercent: -1.46,
-    marketCap: 280000,
-    peRatio: 15.2,
-    volume: 2200000,
-    high: 865.00,
-    low: 845.00,
-    open: 860.00,
-    previousClose: 863.00,
-  },
-  {
-    id: '17',
-    symbol: 'WIPRO',
-    name: 'Wipro Ltd',
-    currentPrice: 450.75,
-    change: 8.25,
-    changePercent: 1.86,
-    marketCap: 250000,
-    peRatio: 18.9,
-    volume: 1800000,
-    high: 455.00,
-    low: 445.00,
-    open: 448.00,
-    previousClose: 442.50,
-  },
-  {
-    id: '18',
-    symbol: 'POWERGRID',
-    name: 'Power Grid Corporation of India Ltd',
-    currentPrice: 280.50,
-    change: 4.20,
-    changePercent: 1.52,
-    marketCap: 260000,
-    peRatio: 12.8,
-    volume: 3200000,
-    high: 285.00,
-    low: 278.00,
-    open: 280.00,
-    previousClose: 276.30,
-  },
-  {
-    id: '19',
-    symbol: 'NESTLEIND',
-    name: 'Nestle India Ltd',
-    currentPrice: 24500.00,
-    change: -350.00,
-    changePercent: -1.41,
-    marketCap: 240000,
-    peRatio: 65.2,
-    volume: 45000,
-    high: 24800.00,
-    low: 24300.00,
-    open: 24700.00,
-    previousClose: 24850.00,
-  },
-  {
-    id: '20',
-    symbol: 'TECHM',
-    name: 'Tech Mahindra Ltd',
-    currentPrice: 1250.90,
-    change: 22.40,
-    changePercent: 1.82,
-    marketCap: 120000,
-    peRatio: 16.5,
-    volume: 950000,
-    high: 1265.00,
-    low: 1240.00,
-    open: 1245.00,
-    previousClose: 1228.50,
-  },
-  {
-    id: '21',
-    symbol: 'BAJFINANCE',
-    name: 'Bajaj Finance Ltd',
-    currentPrice: 7200.75,
-    change: -85.25,
-    changePercent: -1.17,
-    marketCap: 430000,
-    peRatio: 28.9,
-    volume: 180000,
-    high: 7280.00,
-    low: 7150.00,
-    open: 7250.00,
-    previousClose: 7286.00,
-  },
-  {
-    id: '22',
-    symbol: 'HCLTECH',
-    name: 'HCL Technologies Ltd',
-    currentPrice: 1150.40,
-    change: 15.60,
-    changePercent: 1.37,
-    marketCap: 310000,
-    peRatio: 20.3,
-    volume: 1200000,
-    high: 1165.00,
-    low: 1140.00,
-    open: 1145.00,
-    previousClose: 1134.80,
-  },
-  {
-    id: '23',
-    symbol: 'ADANIENT',
-    name: 'Adani Enterprises Ltd',
-    currentPrice: 2850.25,
-    change: 45.75,
-    changePercent: 1.63,
-    marketCap: 320000,
-    peRatio: 45.8,
-    volume: 450000,
-    high: 2870.00,
-    low: 2820.00,
-    open: 2830.00,
-    previousClose: 2804.50,
-  },
-  {
-    id: '24',
-    symbol: 'JSWSTEEL',
-    name: 'JSW Steel Ltd',
-    currentPrice: 850.90,
-    change: -8.10,
-    changePercent: -0.94,
-    marketCap: 210000,
-    peRatio: 12.5,
-    volume: 1800000,
-    high: 860.00,
-    low: 845.00,
-    open: 855.00,
-    previousClose: 859.00,
-  },
-  {
-    id: '25',
-    symbol: 'ONGC',
-    name: 'Oil & Natural Gas Corporation Ltd',
-    currentPrice: 180.75,
-    change: 3.25,
-    changePercent: 1.83,
-    marketCap: 230000,
-    peRatio: 8.9,
-    volume: 8500000,
-    high: 182.00,
-    low: 178.00,
-    open: 180.00,
-    previousClose: 177.50,
-  },
-  {
-    id: '26',
-    symbol: 'TATACONSUM',
-    name: 'Tata Consumer Products Ltd',
-    currentPrice: 950.40,
-    change: 12.60,
-    changePercent: 1.34,
-    marketCap: 88000,
-    peRatio: 42.5,
-    volume: 650000,
-    high: 955.00,
-    low: 940.00,
-    open: 945.00,
-    previousClose: 937.80,
-  },
-  {
-    id: '27',
-    symbol: 'BAJAJFINSV',
-    name: 'Bajaj Finserv Ltd',
-    currentPrice: 1650.25,
-    change: -22.75,
-    changePercent: -1.36,
-    marketCap: 260000,
-    peRatio: 35.2,
-    volume: 280000,
-    high: 1670.00,
-    low: 1640.00,
-    open: 1660.00,
-    previousClose: 1673.00,
-  },
-  {
-    id: '28',
-    symbol: 'COALINDIA',
-    name: 'Coal India Ltd',
-    currentPrice: 420.50,
-    change: 6.80,
-    changePercent: 1.64,
-    marketCap: 260000,
-    peRatio: 9.8,
-    volume: 4200000,
-    high: 425.00,
-    low: 415.00,
-    open: 418.00,
-    previousClose: 413.70,
-  },
-  {
-    id: '29',
-    symbol: 'DIVISLAB',
-    name: 'Divi\'s Laboratories Ltd',
-    currentPrice: 3800.75,
-    change: -45.25,
-    changePercent: -1.18,
-    marketCap: 100000,
-    peRatio: 38.5,
-    volume: 120000,
-    high: 3840.00,
-    low: 3780.00,
-    open: 3820.00,
-    previousClose: 3846.00,
-  },
-  {
-    id: '30',
-    symbol: 'CIPLA',
-    name: 'Cipla Ltd',
-    currentPrice: 1250.90,
-    change: 18.40,
-    changePercent: 1.49,
-    marketCap: 100000,
-    peRatio: 22.8,
-    volume: 850000,
-    high: 1265.00,
-    low: 1240.00,
-    open: 1245.00,
-    previousClose: 1232.50,
-  },
-];
-
-export const getTopGainers = (): Stock[] => {
-  return mockStocks
-    .filter(stock => stock.changePercent > 0)
-    .sort((a, b) => b.changePercent - a.changePercent)
-    .slice(0, 10);
+// API Configuration
+const API_CONFIG = {
+  BASE_URL: 'https://www.alphavantage.co/query',
+  // API_KEY: 'demo', // Replace with your actual API key
+  // API_KEY: '', // Replace with your actual API key
+  // API_KEY: 'K3CO58DSGDMBR2AA', // Replace with your actual API key
+  API_KEY: '2QFT4QQ4K71R7I4Y',
+  RATE_LIMIT: 25,
+  CACHE_DURATION: 24 * 60 * 60 * 1000, // 24 hours
+  SEARCH_DEBOUNCE_DELAY: 500,
 };
 
-export const getTopLosers = (): Stock[] => {
-  return mockStocks
-    .filter(stock => stock.changePercent < 0)
-    .sort((a, b) => a.changePercent - b.changePercent)
-    .slice(0, 10);
+// Cache and rate limiting
+interface CacheEntry {
+  data: any;
+  timestamp: number;
+}
+
+interface RateLimitInfo {
+  requestsMade: number;
+  lastResetDate: string;
+}
+
+// Storage keys
+const CACHE_STORAGE_KEY = '@groww_api_cache';
+const RATE_LIMIT_STORAGE_KEY = '@groww_rate_limit';
+
+let apiCache: Record<string, CacheEntry> = {};
+let rateLimitInfo: RateLimitInfo = {
+  requestsMade: 0,
+  lastResetDate: new Date().toISOString().split('T')[0],
 };
 
-export const getAllStocks = (): Stock[] => {
-  return mockStocks;
+let searchDebounceTimer: NodeJS.Timeout | null = null;
+
+// Initialize cache from AsyncStorage
+const initializeCache = async (): Promise<void> => {
+  try {
+    const [cachedData, rateLimitData] = await Promise.all([
+      AsyncStorage.getItem(CACHE_STORAGE_KEY),
+      AsyncStorage.getItem(RATE_LIMIT_STORAGE_KEY)
+    ]);
+
+    if (cachedData) {
+      apiCache = JSON.parse(cachedData);
+      console.log(`📦 Loaded ${Object.keys(apiCache).length} cache entries from storage`);
+    }
+
+    if (rateLimitData) {
+      rateLimitInfo = JSON.parse(rateLimitData);
+      console.log(`📊 Loaded rate limit info: ${rateLimitInfo.requestsMade} requests made on ${rateLimitInfo.lastResetDate}`);
+    }
+  } catch (error) {
+    console.error('Error loading cache from storage:', error);
+    // Reset to defaults if loading fails
+    apiCache = {};
+    rateLimitInfo = {
+      requestsMade: 0,
+      lastResetDate: new Date().toISOString().split('T')[0],
+    };
+  }
 };
 
-export const getStockById = (id: string): Stock | undefined => {
-  return mockStocks.find(stock => stock.id === id);
+// Save cache to AsyncStorage
+const saveCacheToStorage = async (): Promise<void> => {
+  try {
+    await Promise.all([
+      AsyncStorage.setItem(CACHE_STORAGE_KEY, JSON.stringify(apiCache)),
+      AsyncStorage.setItem(RATE_LIMIT_STORAGE_KEY, JSON.stringify(rateLimitInfo))
+    ]);
+  } catch (error) {
+    console.error('Error saving cache to storage:', error);
+  }
 };
 
-export const getStockChartData = (stockId: string): StockChartData[] => {
-  // Generate mock chart data for the last 30 days
-  const data: StockChartData[] = [];
-  const basePrice = mockStocks.find(s => s.id === stockId)?.currentPrice || 1000;
+// Initialize cache on module load
+initializeCache();
+
+// Helper functions
+const isCacheValid = (entry: CacheEntry): boolean => {
+  return (Date.now() - entry.timestamp) < API_CONFIG.CACHE_DURATION;
+};
+
+const checkRateLimit = (): boolean => {
+  const today = new Date().toISOString().split('T')[0];
+  if (rateLimitInfo.lastResetDate !== today) {
+    rateLimitInfo.requestsMade = 0;
+    rateLimitInfo.lastResetDate = today;
+    saveCacheToStorage(); // Save updated rate limit info
+  }
+  return rateLimitInfo.requestsMade < API_CONFIG.RATE_LIMIT;
+};
+
+const makeApiCall = async (endpoint: string): Promise<any> => {
+  const response = await fetch(endpoint);
   
-  for (let i = 29; i >= 0; i--) {
-    const timestamp = Date.now() - (i * 24 * 60 * 60 * 1000);
-    const randomChange = (Math.random() - 0.5) * 0.1; // ±5% change
-    const price = basePrice * (1 + randomChange);
-    
-    data.push({
-      timestamp,
-      price: Math.round(price * 100) / 100,
-    });
+  if (!response.ok) {
+    throw new Error(`API request failed: ${response.status}`);
+  }
+  
+  const data = await response.json();
+  
+  if (data['Error Message']) {
+    throw new Error(data['Error Message']);
+  }
+  
+  if (data['Note']) {
+    throw new Error(data['Note']);
   }
   
   return data;
 };
 
-export const searchStocks = (query: string): Stock[] => {
-  const lowercaseQuery = query.toLowerCase();
-  return mockStocks.filter(
-    stock =>
-      stock.name.toLowerCase().includes(lowercaseQuery) ||
-      stock.symbol.toLowerCase().includes(lowercaseQuery)
-  );
+const getCachedOrFetch = async (cacheKey: string, apiEndpoint: string): Promise<any> => {
+  const cached = apiCache[cacheKey];
+  
+  if (cached && isCacheValid(cached)) {
+    return cached.data;
+  }
+  
+  if (!checkRateLimit()) {
+    return cached?.data || Promise.reject(new Error('Rate limit exceeded'));
+  }
+  
+  try {
+    const response = await makeApiCall(apiEndpoint);
+    
+    apiCache[cacheKey] = { data: response, timestamp: Date.now() };
+    rateLimitInfo.requestsMade++;
+    
+    // Save updated cache and rate limit info to storage
+    await saveCacheToStorage();
+    
+    return response;
+  } catch (error) {
+    console.error(`API request failed for ${cacheKey}:`, error);
+    
+    if (cached) {
+      return cached.data;
+    } else {
+      return Promise.reject(error);
+    }
+  }
+};
+
+// Simplified stock conversion - only essential fields
+const convertApiDataToStock = (apiData: any): Stock => {
+  const currentPrice = parseFloat(apiData.price) || 0;
+  const changeAmount = parseFloat(apiData.change_amount) || 0;
+  const changePercent = parseFloat(apiData.change_percentage) || 0;
+  const volume = parseInt(apiData.volume) || 0;
+  
+  return {
+    id: apiData.ticker,
+    symbol: apiData.ticker,
+    name: apiData.ticker,
+    currentPrice,
+    change: changeAmount,
+    changePercent,
+    marketCap: 0,
+    peRatio: 0,
+    volume,
+    high: currentPrice * 1.01,
+    low: currentPrice * 0.99,
+    open: currentPrice - changeAmount,
+    previousClose: currentPrice - changeAmount,
+  };
+};
+
+// Search functionality
+export const debouncedSearchStocks = (query: string, callback: (results: SearchResult[]) => void): void => {
+  if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+  
+  searchDebounceTimer = setTimeout(async () => {
+    try {
+      const results = await searchStocks(query);
+      callback(results);
+    } catch (error) {
+      console.error('Search failed:', error);
+      callback([]);
+    }
+  }, API_CONFIG.SEARCH_DEBOUNCE_DELAY);
+};
+
+export const searchStocks = async (query: string): Promise<SearchResult[]> => {
+  if (!query.trim()) return [];
+  
+  const cacheKey = `search_${query.toLowerCase().trim()}`;
+  const apiEndpoint = `${API_CONFIG.BASE_URL}?function=SYMBOL_SEARCH&keywords=${encodeURIComponent(query)}&apikey=${API_CONFIG.API_KEY}`;
+  
+  try {
+    const response = await getCachedOrFetch(cacheKey, apiEndpoint);
+    
+    return response.bestMatches?.map((match: any) => ({
+      symbol: match['1. symbol'],
+      name: match['2. name'],
+      type: match['3. type'],
+      region: match['4. region'],
+      marketOpen: match['5. marketOpen'],
+      marketClose: match['6. marketClose'],
+      timezone: match['7. timezone'],
+      currency: match['8. currency'],
+      matchScore: match['9. matchScore'],
+    })) || [];
+  } catch (error) {
+    console.error('Error searching stocks:', error);
+    return [];
+  }
+};
+
+// Stock data fetching
+export const fetchStockData = async (): Promise<any> => {
+  const cacheKey = 'stock_data';
+  const apiEndpoint = `${API_CONFIG.BASE_URL}?function=TOP_GAINERS_LOSERS&apikey=${API_CONFIG.API_KEY}`;
+  return await getCachedOrFetch(cacheKey, apiEndpoint);
+};
+
+export const fetchCompanyInfo = async (symbol: string): Promise<StockInfo> => {
+  const cacheKey = `stock_info_${symbol.toUpperCase()}`;
+  const apiEndpoint = `${API_CONFIG.BASE_URL}?function=OVERVIEW&symbol=${symbol}&apikey=${API_CONFIG.API_KEY}`;
+  return await getCachedOrFetch(cacheKey, apiEndpoint);
+};
+
+// Stock list functions
+export const getTopGainers = async (): Promise<Stock[]> => {
+  try {
+    const data = await fetchStockData();
+    return data.top_gainers?.map((item: any) => convertApiDataToStock(item)) || [];
+  } catch (error) {
+    console.error('Error fetching top gainers:', error);
+    return [];
+  }
+};
+
+export const getTopLosers = async (): Promise<Stock[]> => {
+  try {
+    const data = await fetchStockData();
+    return data.top_losers?.map((item: any) => convertApiDataToStock(item)) || [];
+  } catch (error) {
+    console.error('Error fetching top losers:', error);
+    return [];
+  }
+};
+
+export const getMostActivelyTraded = async (): Promise<Stock[]> => {
+  try {
+    const data = await fetchStockData();
+    return data.most_actively_traded?.map((item: any) => convertApiDataToStock(item)) || [];
+  } catch (error) {
+    console.error('Error fetching most actively traded:', error);
+    return [];
+  }
+};
+
+export const getAllStocks = async (): Promise<Stock[]> => {
+  try {
+    const data = await fetchStockData();
+    const allStocks = [
+      ...(data.top_gainers || []),
+      ...(data.top_losers || []),
+      ...(data.most_actively_traded || [])
+    ];
+    
+    // Use a Map to ensure unique stocks by ticker
+    const uniqueStocks = new Map<string, any>();
+    
+    allStocks.forEach((item: any) => {
+      if (!uniqueStocks.has(item.ticker)) {
+        uniqueStocks.set(item.ticker, item);
+      }
+    });
+    
+    return Array.from(uniqueStocks.values()).map((item: any) => convertApiDataToStock(item));
+  } catch (error) {
+    console.error('Error fetching all stocks:', error);
+    return [];
+  }
+};
+
+// Helper to fetch a single stock by symbol from the API
+export const fetchSingleStock = async (symbol: string): Promise<Stock | undefined> => {
+  try {
+    // Use the same API as searchStocks but for a single symbol
+    const apiEndpoint = `${API_CONFIG.BASE_URL}?function=SYMBOL_SEARCH&keywords=${encodeURIComponent(symbol)}&apikey=${API_CONFIG.API_KEY}`;
+    const response = await getCachedOrFetch(`search_${symbol.toLowerCase()}`, apiEndpoint);
+    if (response.bestMatches && response.bestMatches.length > 0) {
+      const match = response.bestMatches.find((m: any) => m['1. symbol'].toUpperCase() === symbol.toUpperCase());
+      if (match) {
+        // Map to Stock object (minimal fields)
+        return {
+          id: match['1. symbol'],
+          symbol: match['1. symbol'],
+          name: match['2. name'],
+          currentPrice: 0,
+          change: 0,
+          changePercent: 0,
+          marketCap: 0,
+          peRatio: 0,
+          volume: 0,
+          high: 0,
+          low: 0,
+          open: 0,
+          previousClose: 0,
+        };
+      }
+    }
+    return undefined;
+  } catch (error) {
+    console.error('Error fetching single stock:', error);
+    return undefined;
+  }
+};
+
+export const getStockById = async (id: string): Promise<Stock | undefined> => {
+  try {
+    const allStocks = await getAllStocks();
+    let stock = allStocks.find(stock => stock.id === id);
+    if (!stock) {
+      // Try to fetch from API if not found locally
+      stock = await fetchSingleStock(id);
+    }
+    return stock;
+  } catch (error) {
+    console.error('Error fetching stock by ID:', error);
+    return undefined;
+  }
+};
+
+// New function to get stock by symbol
+export const getStockBySymbol = async (symbol: string): Promise<Stock | undefined> => {
+  try {
+    const allStocks = await getAllStocks();
+    return allStocks.find(stock => stock.symbol.toUpperCase() === symbol.toUpperCase());
+  } catch (error) {
+    console.error('Error fetching stock by symbol:', error);
+    return undefined;
+  }
+};
+
+// Chart data generation
+export const getStockChartData = async (stockId: string): Promise<StockChartData[]> => {
+  try {
+    const stock = await getStockById(stockId);
+    if (!stock) {
+      console.error('Stock not found:', stockId);
+      return [];
+    }
+    console.log("Stock Symbol", stock.symbol);
+    // Fetch real time series data from Alpha Vantage
+    const timeSeriesData = await fetchTimeSeriesData(stock.symbol);
+    // console.log("Time Series Data", timeSeriesData);
+    return timeSeriesData;
+  } catch (error) {
+    console.error('Error generating chart data:', error);
+    // Fallback to generated data if API fails
+    const stock = await getStockById(stockId);
+    const basePrice = stock?.currentPrice || 1000;
+    
+    return Array.from({ length: 30 }, (_, i) => {
+      const timestamp = Date.now() - ((29 - i) * 24 * 60 * 60 * 1000);
+      const randomChange = (Math.random() - 0.5) * 0.05; // Reduced volatility for more realistic data
+      const price = basePrice * (1 + randomChange);
+      
+      return {
+        timestamp,
+        price: Math.round(price * 100) / 100,
+      };
+    });
+  }
+};
+
+// New function to fetch time series data from Alpha Vantage
+export const fetchTimeSeriesData = async (symbol: string): Promise<StockChartData[]> => {
+  const cacheKey = `time_series_${symbol.toUpperCase()}`;
+  const apiEndpoint = `${API_CONFIG.BASE_URL}?function=TIME_SERIES_DAILY&symbol=${symbol}&apikey=${API_CONFIG.API_KEY}`;
+  
+  try {
+    const response = await getCachedOrFetch(cacheKey, apiEndpoint);
+    
+    if (!response['Time Series (Daily)']) {
+      throw new Error('No time series data available');
+    }
+
+    const timeSeriesData = response['Time Series (Daily)'];
+    const dates = Object.keys(timeSeriesData).sort().reverse(); // Sort by date, newest first
+    
+    if (dates.length === 0) {
+      throw new Error('No dates available in time series data');
+    }
+    
+    // Take the most recent 30 days of data
+    const last30Days = dates.slice(0, Math.min(30, dates.length));
+    
+    return last30Days.map((date) => {
+      const dayData = timeSeriesData[date];
+      const closePrice = parseFloat(dayData['4. close']);
+      const timestamp = new Date(date).getTime();
+      
+      if (isNaN(closePrice)) {
+        console.warn(`Invalid close price for date ${date}: ${dayData['4. close']}`);
+        return null;
+      }
+      
+      return {
+        timestamp,
+        price: closePrice,
+      };
+    }).filter((item): item is StockChartData => item !== null).reverse(); // Reverse to show oldest to newest for chart
+  } catch (error) {
+    console.error('Error fetching time series data:', error);
+    throw error;
+  }
+};
+
+// Cache management
+export const clearCache = async (): Promise<void> => {
+  apiCache = {};
+  rateLimitInfo = {
+    requestsMade: 0,
+    lastResetDate: new Date().toISOString().split('T')[0],
+  };
+  
+  try {
+    await Promise.all([
+      AsyncStorage.removeItem(CACHE_STORAGE_KEY),
+      AsyncStorage.removeItem(RATE_LIMIT_STORAGE_KEY)
+    ]);
+    console.log('Cache cleared from memory and storage');
+  } catch (error) {
+    console.error('Error clearing cache from storage:', error);
+    console.log('Cache cleared from memory only');
+  }
+};
+
+export const getCacheInfo = (): { cacheSize: number; rateLimitInfo: RateLimitInfo; cacheEntries: Record<string, { age: string; isValid: boolean }> } => {
+  const cacheEntries: Record<string, { age: string; isValid: boolean }> = {};
+  
+  Object.keys(apiCache).forEach(key => {
+    const entry = apiCache[key];
+    const ageInMinutes = Math.round((Date.now() - entry.timestamp) / 1000 / 60);
+    cacheEntries[key] = {
+      age: `${ageInMinutes} minutes`,
+      isValid: isCacheValid(entry)
+    };
+  });
+  
+  return {
+    cacheSize: Object.keys(apiCache).length,
+    rateLimitInfo,
+    cacheEntries,
+  };
+};
+
+// Debug function to log detailed cache status
+export const logCacheStatus = (): void => {
+  const cacheInfo = getCacheInfo();
+  console.log('Cache Status:', cacheInfo);
 }; 

@@ -9,6 +9,7 @@ import { ExploreScreen } from './src/screens/ExploreScreen';
 import { WatchlistScreen } from './src/screens/WatchlistScreen';
 import { ProductScreen } from "./src/screens/ProductScreen"
 import { ViewAllScreen } from './src/screens/ViewAllScreen';
+import { DemoProductScreen } from './src/screens/DemoProductScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -37,6 +38,17 @@ function ExploreStack() {
         component={ViewAllScreen}
         options={{
           headerShown: false,
+        }}
+      />
+      <Stack.Screen 
+        name="DemoProduct" 
+        component={DemoProductScreen}
+        options={{
+          title: 'IBM Demo',
+          headerStyle: {
+            backgroundColor: '#ffffff',
+          },
+          headerTintColor: '#000000',
         }}
       />
     </Stack.Navigator>

@@ -94,10 +94,10 @@ export const SimpleChart: React.FC<SimpleChartProps> = ({
         {/* Y-axis labels */}
         <View className="absolute left-2 top-2 bottom-2 justify-between">
           <Text className="text-xs text-gray-600 dark:text-gray-400">
-            ₹{maxY.toFixed(0)}
+            ${maxY.toFixed(0)}
           </Text>
           <Text className="text-xs text-gray-600 dark:text-gray-400">
-            ₹{minY.toFixed(0)}
+            ${minY.toFixed(0)}
           </Text>
         </View>
         
