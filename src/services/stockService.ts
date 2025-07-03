@@ -1,16 +1,42 @@
 import { Stock, StockChartData, StockInfo, SearchResult } from '../types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { formatTradingDate } from '../utils/timezoneUtils';
+import { ALPHA_VANTAGE_API_KEY } from '@env';
 
 // API Configuration
 const API_CONFIG = {
   BASE_URL: 'https://www.alphavantage.co/query',
-  // API_KEY: 'demo', // Replace with your actual API key
-  // API_KEY: '', // Replace with your actual API key
-  // API_KEY: 'K3CO58DSGDMBR2AA', // Replace with your actual API key
-  API_KEY: '2QFT4QQ4K71R7I4Y',
+  DEFAULT_API_KEY: ALPHA_VANTAGE_API_KEY, // From environment variable
   RATE_LIMIT: 25,
   CACHE_DURATION: 24 * 60 * 60 * 1000, // 24 hours
   SEARCH_DEBOUNCE_DELAY: 500,
+};
+
+// Get API key from storage or use default
+const getApiKey = async (): Promise<string> => {
+  try {
+    const storedKey = await AsyncStorage.getItem('@groww_api_key');
+    const apiKey = storedKey || API_CONFIG.DEFAULT_API_KEY;
+
+    // Log which API key is being used (for debugging)
+    if (storedKey) {
+      console.log(
+        '🔑 Using user-provided API key:',
+        storedKey.substring(0, 8) + '...'
+      );
+    } else {
+      console.log(
+        '🔑 Using default API key from .env file:',
+        API_CONFIG.DEFAULT_API_KEY.substring(0, 8) + '...'
+      );
+    }
+
+    return apiKey;
+  } catch (error) {
+    console.error('Error loading API key:', error);
+    console.log('🔑 Using fallback default API key due to error');
+    return API_CONFIG.DEFAULT_API_KEY;
+  }
 };
 
 // Cache and rate limiting
@@ -41,17 +67,15 @@ const initializeCache = async (): Promise<void> => {
   try {
     const [cachedData, rateLimitData] = await Promise.all([
       AsyncStorage.getItem(CACHE_STORAGE_KEY),
-      AsyncStorage.getItem(RATE_LIMIT_STORAGE_KEY)
+      AsyncStorage.getItem(RATE_LIMIT_STORAGE_KEY),
     ]);
 
     if (cachedData) {
       apiCache = JSON.parse(cachedData);
-      console.log(`📦 Loaded ${Object.keys(apiCache).length} cache entries from storage`);
     }
 
     if (rateLimitData) {
       rateLimitInfo = JSON.parse(rateLimitData);
-      console.log(`📊 Loaded rate limit info: ${rateLimitInfo.requestsMade} requests made on ${rateLimitInfo.lastResetDate}`);
     }
   } catch (error) {
     console.error('Error loading cache from storage:', error);
@@ -69,7 +93,10 @@ const saveCacheToStorage = async (): Promise<void> => {
   try {
     await Promise.all([
       AsyncStorage.setItem(CACHE_STORAGE_KEY, JSON.stringify(apiCache)),
-      AsyncStorage.setItem(RATE_LIMIT_STORAGE_KEY, JSON.stringify(rateLimitInfo))
+      AsyncStorage.setItem(
+        RATE_LIMIT_STORAGE_KEY,
+        JSON.stringify(rateLimitInfo)
+      ),
     ]);
   } catch (error) {
     console.error('Error saving cache to storage:', error);
@@ -81,7 +108,7 @@ initializeCache();
 
 // Helper functions
 const isCacheValid = (entry: CacheEntry): boolean => {
-  return (Date.now() - entry.timestamp) < API_CONFIG.CACHE_DURATION;
+  return Date.now() - entry.timestamp < API_CONFIG.CACHE_DURATION;
 };
 
 const checkRateLimit = (): boolean => {
@@ -91,53 +118,80 @@ const checkRateLimit = (): boolean => {
     rateLimitInfo.lastResetDate = today;
     saveCacheToStorage(); // Save updated rate limit info
   }
+
   return rateLimitInfo.requestsMade < API_CONFIG.RATE_LIMIT;
 };
 
 const makeApiCall = async (endpoint: string): Promise<any> => {
   const response = await fetch(endpoint);
-  
   if (!response.ok) {
     throw new Error(`API request failed: ${response.status}`);
   }
-  
   const data = await response.json();
-  
+  console.log('API response:', data);
+  // Check for various error responses from Alpha Vantage API
   if (data['Error Message']) {
     throw new Error(data['Error Message']);
   }
-  
+
   if (data['Note']) {
     throw new Error(data['Note']);
   }
-  
+
+  // Check for rate limit information message
+  if (data['Information'] && data['Information'].includes('rate limit')) {
+    throw new Error(`Rate limit exceeded: ${data['Information']}`);
+  }
+
+  // Check if the response contains actual data (not just error messages)
+  // if (Object.keys(data).length === 0) {
+  //   throw new Error('Empty response from API');
+  // }
+
+  // Check if response contains only error-related fields
+  const errorFields = ['Error Message', 'Note', 'Information', 'Warning'];
+  const hasOnlyErrorFields = Object.keys(data).every(key =>
+    errorFields.includes(key)
+  );
+  if (Object.keys(data).length != 0 && hasOnlyErrorFields) {
+    throw new Error('API returned only error information');
+  }
+
   return data;
 };
 
-const getCachedOrFetch = async (cacheKey: string, apiEndpoint: string): Promise<any> => {
+const getCachedOrFetch = async (
+  cacheKey: string,
+  apiEndpoint: string
+): Promise<any> => {
   const cached = apiCache[cacheKey];
-  
+
+  // Check if we have valid cached data
   if (cached && isCacheValid(cached)) {
     return cached.data;
   }
-  
+
+  // Check rate limit before making API call
   if (!checkRateLimit()) {
     return cached?.data || Promise.reject(new Error('Rate limit exceeded'));
   }
-  
+
   try {
+    console.log('Making API call to:', apiEndpoint);
     const response = await makeApiCall(apiEndpoint);
-    
+
+    // Cache the new response
     apiCache[cacheKey] = { data: response, timestamp: Date.now() };
     rateLimitInfo.requestsMade++;
-    
+
     // Save updated cache and rate limit info to storage
     await saveCacheToStorage();
-    
+
     return response;
   } catch (error) {
     console.error(`API request failed for ${cacheKey}:`, error);
-    
+
+    // If we have cached data (even if expired), return it as fallback
     if (cached) {
       return cached.data;
     } else {
@@ -152,7 +206,7 @@ const convertApiDataToStock = (apiData: any): Stock => {
   const changeAmount = parseFloat(apiData.change_amount) || 0;
   const changePercent = parseFloat(apiData.change_percentage) || 0;
   const volume = parseInt(apiData.volume) || 0;
-  
+
   return {
     id: apiData.ticker,
     symbol: apiData.ticker,
@@ -167,13 +221,24 @@ const convertApiDataToStock = (apiData: any): Stock => {
     low: currentPrice * 0.99,
     open: currentPrice - changeAmount,
     previousClose: currentPrice - changeAmount,
+    currency: 'USD', // Default for cached stocks
+    timezone: 'UTC-04', // Default for cached stocks
+    region: 'United States', // Default for cached stocks
+    marketOpen: '09:30', // US market open time
+    marketClose: '16:00', // US market close time
+    marketTimezone: 'Eastern', // US market timezone
+    exchange: 'NYSE/NASDAQ', // US exchanges
+    country: 'United States', // US country
   };
 };
 
 // Search functionality
-export const debouncedSearchStocks = (query: string, callback: (results: SearchResult[]) => void): void => {
+export const debouncedSearchStocks = (
+  query: string,
+  callback: (results: SearchResult[]) => void
+): void => {
   if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
-  
+
   searchDebounceTimer = setTimeout(async () => {
     try {
       const results = await searchStocks(query);
@@ -187,24 +252,27 @@ export const debouncedSearchStocks = (query: string, callback: (results: SearchR
 
 export const searchStocks = async (query: string): Promise<SearchResult[]> => {
   if (!query.trim()) return [];
-  
+
   const cacheKey = `search_${query.toLowerCase().trim()}`;
-  const apiEndpoint = `${API_CONFIG.BASE_URL}?function=SYMBOL_SEARCH&keywords=${encodeURIComponent(query)}&apikey=${API_CONFIG.API_KEY}`;
-  
+  const apiKey = await getApiKey();
+  const apiEndpoint = `${API_CONFIG.BASE_URL}?function=SYMBOL_SEARCH&keywords=${encodeURIComponent(query)}&apikey=${apiKey}`;
+
   try {
     const response = await getCachedOrFetch(cacheKey, apiEndpoint);
-    
-    return response.bestMatches?.map((match: any) => ({
-      symbol: match['1. symbol'],
-      name: match['2. name'],
-      type: match['3. type'],
-      region: match['4. region'],
-      marketOpen: match['5. marketOpen'],
-      marketClose: match['6. marketClose'],
-      timezone: match['7. timezone'],
-      currency: match['8. currency'],
-      matchScore: match['9. matchScore'],
-    })) || [];
+
+    return (
+      response.bestMatches?.map((match: any) => ({
+        symbol: match['1. symbol'],
+        name: match['2. name'],
+        type: match['3. type'],
+        region: match['4. region'],
+        marketOpen: match['5. marketOpen'],
+        marketClose: match['6. marketClose'],
+        timezone: match['7. timezone'],
+        currency: match['8. currency'],
+        matchScore: match['9. matchScore'],
+      })) || []
+    );
   } catch (error) {
     console.error('Error searching stocks:', error);
     return [];
@@ -214,13 +282,15 @@ export const searchStocks = async (query: string): Promise<SearchResult[]> => {
 // Stock data fetching
 export const fetchStockData = async (): Promise<any> => {
   const cacheKey = 'stock_data';
-  const apiEndpoint = `${API_CONFIG.BASE_URL}?function=TOP_GAINERS_LOSERS&apikey=${API_CONFIG.API_KEY}`;
+  const apiKey = await getApiKey();
+  const apiEndpoint = `${API_CONFIG.BASE_URL}?function=TOP_GAINERS_LOSERS&apikey=${apiKey}`;
   return await getCachedOrFetch(cacheKey, apiEndpoint);
 };
 
 export const fetchCompanyInfo = async (symbol: string): Promise<StockInfo> => {
   const cacheKey = `stock_info_${symbol.toUpperCase()}`;
-  const apiEndpoint = `${API_CONFIG.BASE_URL}?function=OVERVIEW&symbol=${symbol}&apikey=${API_CONFIG.API_KEY}`;
+  const apiKey = await getApiKey();
+  const apiEndpoint = `${API_CONFIG.BASE_URL}?function=OVERVIEW&symbol=${symbol}&apikey=${apiKey}`;
   return await getCachedOrFetch(cacheKey, apiEndpoint);
 };
 
@@ -228,7 +298,9 @@ export const fetchCompanyInfo = async (symbol: string): Promise<StockInfo> => {
 export const getTopGainers = async (): Promise<Stock[]> => {
   try {
     const data = await fetchStockData();
-    return data.top_gainers?.map((item: any) => convertApiDataToStock(item)) || [];
+    return (
+      data.top_gainers?.map((item: any) => convertApiDataToStock(item)) || []
+    );
   } catch (error) {
     console.error('Error fetching top gainers:', error);
     return [];
@@ -238,7 +310,9 @@ export const getTopGainers = async (): Promise<Stock[]> => {
 export const getTopLosers = async (): Promise<Stock[]> => {
   try {
     const data = await fetchStockData();
-    return data.top_losers?.map((item: any) => convertApiDataToStock(item)) || [];
+    return (
+      data.top_losers?.map((item: any) => convertApiDataToStock(item)) || []
+    );
   } catch (error) {
     console.error('Error fetching top losers:', error);
     return [];
@@ -248,7 +322,11 @@ export const getTopLosers = async (): Promise<Stock[]> => {
 export const getMostActivelyTraded = async (): Promise<Stock[]> => {
   try {
     const data = await fetchStockData();
-    return data.most_actively_traded?.map((item: any) => convertApiDataToStock(item)) || [];
+    return (
+      data.most_actively_traded?.map((item: any) =>
+        convertApiDataToStock(item)
+      ) || []
+    );
   } catch (error) {
     console.error('Error fetching most actively traded:', error);
     return [];
@@ -261,19 +339,21 @@ export const getAllStocks = async (): Promise<Stock[]> => {
     const allStocks = [
       ...(data.top_gainers || []),
       ...(data.top_losers || []),
-      ...(data.most_actively_traded || [])
+      ...(data.most_actively_traded || []),
     ];
-    
+
     // Use a Map to ensure unique stocks by ticker
     const uniqueStocks = new Map<string, any>();
-    
+
     allStocks.forEach((item: any) => {
       if (!uniqueStocks.has(item.ticker)) {
         uniqueStocks.set(item.ticker, item);
       }
     });
-    
-    return Array.from(uniqueStocks.values()).map((item: any) => convertApiDataToStock(item));
+
+    return Array.from(uniqueStocks.values()).map((item: any) =>
+      convertApiDataToStock(item)
+    );
   } catch (error) {
     console.error('Error fetching all stocks:', error);
     return [];
@@ -281,13 +361,21 @@ export const getAllStocks = async (): Promise<Stock[]> => {
 };
 
 // Helper to fetch a single stock by symbol from the API
-export const fetchSingleStock = async (symbol: string): Promise<Stock | undefined> => {
+export const fetchSingleStock = async (
+  symbol: string
+): Promise<Stock | undefined> => {
   try {
     // Use the same API as searchStocks but for a single symbol
-    const apiEndpoint = `${API_CONFIG.BASE_URL}?function=SYMBOL_SEARCH&keywords=${encodeURIComponent(symbol)}&apikey=${API_CONFIG.API_KEY}`;
-    const response = await getCachedOrFetch(`search_${symbol.toLowerCase()}`, apiEndpoint);
+    const apiKey = await getApiKey();
+    const apiEndpoint = `${API_CONFIG.BASE_URL}?function=SYMBOL_SEARCH&keywords=${encodeURIComponent(symbol)}&apikey=${apiKey}`;
+    const response = await getCachedOrFetch(
+      `search_${symbol.toLowerCase()}`,
+      apiEndpoint
+    );
     if (response.bestMatches && response.bestMatches.length > 0) {
-      const match = response.bestMatches.find((m: any) => m['1. symbol'].toUpperCase() === symbol.toUpperCase());
+      const match = response.bestMatches.find(
+        (m: any) => m['1. symbol'].toUpperCase() === symbol.toUpperCase()
+      );
       if (match) {
         // Map to Stock object (minimal fields)
         return {
@@ -330,10 +418,14 @@ export const getStockById = async (id: string): Promise<Stock | undefined> => {
 };
 
 // New function to get stock by symbol
-export const getStockBySymbol = async (symbol: string): Promise<Stock | undefined> => {
+export const getStockBySymbol = async (
+  symbol: string
+): Promise<Stock | undefined> => {
   try {
     const allStocks = await getAllStocks();
-    return allStocks.find(stock => stock.symbol.toUpperCase() === symbol.toUpperCase());
+    return allStocks.find(
+      stock => stock.symbol.toUpperCase() === symbol.toUpperCase()
+    );
   } catch (error) {
     console.error('Error fetching stock by symbol:', error);
     return undefined;
@@ -341,121 +433,98 @@ export const getStockBySymbol = async (symbol: string): Promise<Stock | undefine
 };
 
 // Chart data generation
-export const getStockChartData = async (stockId: string): Promise<StockChartData[]> => {
-  try {
-    const stock = await getStockById(stockId);
-    if (!stock) {
-      console.error('Stock not found:', stockId);
-      return [];
-    }
-    console.log("Stock Symbol", stock.symbol);
-    // Fetch real time series data from Alpha Vantage
-    const timeSeriesData = await fetchTimeSeriesData(stock.symbol);
-    // console.log("Time Series Data", timeSeriesData);
-    return timeSeriesData;
-  } catch (error) {
-    console.error('Error generating chart data:', error);
-    // Fallback to generated data if API fails
-    const stock = await getStockById(stockId);
-    const basePrice = stock?.currentPrice || 1000;
-    
-    return Array.from({ length: 30 }, (_, i) => {
-      const timestamp = Date.now() - ((29 - i) * 24 * 60 * 60 * 1000);
-      const randomChange = (Math.random() - 0.5) * 0.05; // Reduced volatility for more realistic data
-      const price = basePrice * (1 + randomChange);
-      
-      return {
-        timestamp,
-        price: Math.round(price * 100) / 100,
-      };
-    });
-  }
-};
+export const getStockChartData = async (
+  symbol: string,
+  region?: string
+): Promise<StockChartData[]> => {
+  const cacheKey = `chart_${symbol.toUpperCase()}`;
+  const apiKey = await getApiKey();
+  const apiEndpoint = `${API_CONFIG.BASE_URL}?function=TIME_SERIES_DAILY&symbol=${symbol}&apikey=${apiKey}`;
 
-// New function to fetch time series data from Alpha Vantage
-export const fetchTimeSeriesData = async (symbol: string): Promise<StockChartData[]> => {
-  const cacheKey = `time_series_${symbol.toUpperCase()}`;
-  const apiEndpoint = `${API_CONFIG.BASE_URL}?function=TIME_SERIES_DAILY&symbol=${symbol}&apikey=${API_CONFIG.API_KEY}`;
-  
   try {
     const response = await getCachedOrFetch(cacheKey, apiEndpoint);
-    
+
     if (!response['Time Series (Daily)']) {
       throw new Error('No time series data available');
     }
 
+    // Convert the time series data
     const timeSeriesData = response['Time Series (Daily)'];
-    const dates = Object.keys(timeSeriesData).sort().reverse(); // Sort by date, newest first
-    
-    if (dates.length === 0) {
-      throw new Error('No dates available in time series data');
-    }
-    
-    // Take the most recent 30 days of data
-    const last30Days = dates.slice(0, Math.min(30, dates.length));
-    
-    return last30Days.map((date) => {
-      const dayData = timeSeriesData[date];
-      const closePrice = parseFloat(dayData['4. close']);
-      const timestamp = new Date(date).getTime();
-      
-      if (isNaN(closePrice)) {
-        console.warn(`Invalid close price for date ${date}: ${dayData['4. close']}`);
-        return null;
+    const chartData: StockChartData[] = [];
+
+    Object.entries(timeSeriesData).forEach(
+      ([dateString, data]: [string, any]) => {
+        const timestamp = new Date(dateString).getTime();
+        const price = parseFloat(data['4. close']);
+
+        // Trading dates are the same across all timezones - no conversion needed
+        const formattedDate = formatTradingDate(dateString);
+
+        chartData.push({
+          timestamp,
+          price,
+          date: formattedDate, // Same date for all timezones
+          dateStockTimezone: formattedDate, // Same date for stock region too
+          open: parseFloat(data['1. open']),
+          high: parseFloat(data['2. high']),
+          low: parseFloat(data['3. low']),
+          volume: parseInt(data['5. volume']),
+        });
       }
-      
-      return {
-        timestamp,
-        price: closePrice,
-      };
-    }).filter((item): item is StockChartData => item !== null).reverse(); // Reverse to show oldest to newest for chart
+    );
+
+    // Sort by timestamp (oldest first)
+    return chartData.sort((a, b) => a.timestamp - b.timestamp);
   } catch (error) {
-    console.error('Error fetching time series data:', error);
-    throw error;
+    console.error('Error fetching chart data:', error);
+    return [];
   }
 };
 
 // Cache management
 export const clearCache = async (): Promise<void> => {
+  // Clear memory cache immediately
   apiCache = {};
   rateLimitInfo = {
     requestsMade: 0,
     lastResetDate: new Date().toISOString().split('T')[0],
   };
-  
+
+  // Clear any pending search debounce timer
+  if (searchDebounceTimer) {
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = null;
+  }
+
   try {
     await Promise.all([
       AsyncStorage.removeItem(CACHE_STORAGE_KEY),
-      AsyncStorage.removeItem(RATE_LIMIT_STORAGE_KEY)
+      AsyncStorage.removeItem(RATE_LIMIT_STORAGE_KEY),
     ]);
-    console.log('Cache cleared from memory and storage');
   } catch (error) {
     console.error('Error clearing cache from storage:', error);
-    console.log('Cache cleared from memory only');
   }
 };
 
-export const getCacheInfo = (): { cacheSize: number; rateLimitInfo: RateLimitInfo; cacheEntries: Record<string, { age: string; isValid: boolean }> } => {
+export const getCacheInfo = (): {
+  cacheSize: number;
+  rateLimitInfo: RateLimitInfo;
+  cacheEntries: Record<string, { age: string; isValid: boolean }>;
+} => {
   const cacheEntries: Record<string, { age: string; isValid: boolean }> = {};
-  
+
   Object.keys(apiCache).forEach(key => {
     const entry = apiCache[key];
     const ageInMinutes = Math.round((Date.now() - entry.timestamp) / 1000 / 60);
     cacheEntries[key] = {
       age: `${ageInMinutes} minutes`,
-      isValid: isCacheValid(entry)
+      isValid: isCacheValid(entry),
     };
   });
-  
+
   return {
     cacheSize: Object.keys(apiCache).length,
     rateLimitInfo,
     cacheEntries,
   };
 };
-
-// Debug function to log detailed cache status
-export const logCacheStatus = (): void => {
-  const cacheInfo = getCacheInfo();
-  console.log('Cache Status:', cacheInfo);
-}; 

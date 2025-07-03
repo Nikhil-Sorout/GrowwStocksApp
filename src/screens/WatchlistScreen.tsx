@@ -1,15 +1,34 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, TextInput, Modal } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  TextInput,
+  Modal,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { StockCard } from '../components/StockCard';
-import { getWatchlists, createWatchlist, deleteWatchlist } from '../services/watchlistService';
+import {
+  getWatchlists,
+  createWatchlist,
+  deleteWatchlist,
+} from '../services/watchlistService';
 import { Watchlist, Stock } from '../types';
+import { useTheme } from '../hooks/useTheme';
+import { useCustomAlert } from '../hooks/useCustomAlert';
 
 export const WatchlistScreen: React.FC = () => {
   const navigation = useNavigation();
+  const { colors } = useTheme();
+  const { showErrorAlert, showSuccessAlert, showConfirmAlert, AlertComponent } =
+    useCustomAlert();
   const [watchlists, setWatchlists] = useState<Watchlist[]>([]);
-  const [expandedWatchlist, setExpandedWatchlist] = useState<string | null>(null);
+  const [expandedWatchlist, setExpandedWatchlist] = useState<string | null>(
+    null
+  );
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newWatchlistName, setNewWatchlistName] = useState('');
   const [loading, setLoading] = useState(true);
@@ -34,7 +53,7 @@ export const WatchlistScreen: React.FC = () => {
 
   const handleCreateWatchlist = async () => {
     if (!newWatchlistName.trim()) {
-      Alert.alert('Error', 'Please enter a watchlist name');
+      showErrorAlert('Error', 'Please enter a watchlist name');
       return;
     }
 
@@ -43,32 +62,31 @@ export const WatchlistScreen: React.FC = () => {
       setNewWatchlistName('');
       setShowCreateModal(false);
       loadWatchlists();
-      Alert.alert('Success', 'Watchlist created successfully');
+      showSuccessAlert('Success', 'Watchlist created successfully');
     } catch (error) {
-      Alert.alert('Error', 'Failed to create watchlist');
+      showErrorAlert('Error', 'Failed to create watchlist');
     }
   };
 
-  const handleDeleteWatchlist = async (watchlistId: string, watchlistName: string) => {
-    Alert.alert(
+  const handleDeleteWatchlist = async (
+    watchlistId: string,
+    watchlistName: string
+  ) => {
+    showConfirmAlert(
       'Delete Watchlist',
       `Are you sure you want to delete "${watchlistName}"?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteWatchlist(watchlistId);
-              loadWatchlists();
-              Alert.alert('Success', 'Watchlist deleted successfully');
-            } catch (error) {
-              Alert.alert('Error', 'Failed to delete watchlist');
-            }
-          },
-        },
-      ]
+      async () => {
+        try {
+          await deleteWatchlist(watchlistId);
+          loadWatchlists();
+          showSuccessAlert('Success', 'Watchlist deleted successfully');
+        } catch (error) {
+          showErrorAlert('Error', 'Failed to delete watchlist');
+        }
+      },
+      undefined,
+      'Delete',
+      'Cancel'
     );
   };
 
@@ -77,97 +95,181 @@ export const WatchlistScreen: React.FC = () => {
   };
 
   const toggleWatchlistExpansion = (watchlistId: string) => {
-    setExpandedWatchlist(expandedWatchlist === watchlistId ? null : watchlistId);
+    setExpandedWatchlist(
+      expandedWatchlist === watchlistId ? null : watchlistId
+    );
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50 dark:bg-gray-900">
+    <SafeAreaView
+      className="flex-1"
+      style={{ backgroundColor: colors.background }}
+    >
+      <AlertComponent />
       {loading ? (
         <View className="flex-1 justify-center items-center">
-          <Text className="text-gray-600 dark:text-gray-400">Loading watchlists...</Text>
+          <Text style={{ color: colors.textSecondary }}>
+            Loading watchlists...
+          </Text>
         </View>
       ) : watchlists.length === 0 ? (
         <View className="flex-1 justify-center items-center px-4">
           <View className="items-center">
-            <Text className="text-6xl mb-4">📊</Text>
-            <Text className="text-xl font-semibold text-gray-900 dark:text-white text-center mb-2">
+            <Ionicons
+              name="trending-up"
+              size={64}
+              color={colors.textSecondary}
+              style={{ marginBottom: 16 }}
+            />
+            <Text
+              className="text-xl font-semibold text-center mb-2"
+              style={{ color: colors.text }}
+            >
               No watchlists yet
             </Text>
-            <Text className="text-gray-600 dark:text-gray-400 text-center mb-6">
+            <Text
+              className="text-center mb-6"
+              style={{ color: colors.textSecondary }}
+            >
               Start by creating a watchlist and adding stocks to track
             </Text>
             <TouchableOpacity
               onPress={() => setShowCreateModal(true)}
-              className="bg-blue-500 px-6 py-3 rounded-full"
+              className="px-6 py-3 rounded-full border"
+              style={{
+                backgroundColor: colors.primary,
+                borderColor: colors.border,
+              }}
             >
-              <Text className="text-white font-medium">Create Watchlist</Text>
+              <Text
+                className="font-medium"
+                style={{ color: colors.primaryText }}
+              >
+                Create Watchlist
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
       ) : (
         <>
           {/* Header */}
-          <View className="flex-row justify-between items-center p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-            <Text className="text-xl font-bold text-gray-900 dark:text-white">
+          <View
+            className="flex-row justify-between items-center p-4 border-b"
+            style={{
+              backgroundColor: colors.surface,
+              borderBottomColor: colors.border,
+            }}
+          >
+            <Text className="text-xl font-bold" style={{ color: colors.text }}>
               My Watchlists
             </Text>
             <TouchableOpacity
               onPress={() => setShowCreateModal(true)}
-              className="bg-blue-500 px-4 py-2 rounded-full"
+              className="px-6 py-3 rounded-full border"
+              style={{
+                backgroundColor: colors.primary,
+                borderColor: colors.border,
+              }}
             >
-              <Text className="text-white font-medium">+ New</Text>
+              <Text
+                className="font-medium"
+                style={{ color: colors.primaryText }}
+              >
+                + New
+              </Text>
             </TouchableOpacity>
           </View>
 
           <ScrollView className="flex-1 p-4">
-            {watchlists.map((watchlist) => (
+            {watchlists.map(watchlist => (
               <View
                 key={watchlist.id}
-                className="bg-white dark:bg-gray-800 rounded-lg mb-4 shadow-sm border border-gray-100 dark:border-gray-700"
+                className="rounded-lg mb-4 border shadow-sm"
+                style={{
+                  backgroundColor: colors.surface,
+                  shadowColor: colors.text,
+                  shadowOffset: { width: 0, height: 1 },
+                  shadowOpacity: 0.1,
+                  shadowRadius: 2,
+                  elevation: 2,
+                  borderColor: colors.border,
+                }}
               >
                 {/* Watchlist Header */}
-                <TouchableOpacity
-                  onPress={() => toggleWatchlistExpansion(watchlist.id)}
-                  className="p-4 flex-row justify-between items-center"
-                >
-                  <View className="flex-1">
-                    <Text className="text-lg font-semibold text-gray-900 dark:text-white">
-                      {watchlist.name}
-                    </Text>
-                    <Text className="text-sm text-gray-600 dark:text-gray-400">
-                      {watchlist.stocks.length} stocks
-                    </Text>
-                  </View>
-                  <View className="flex-row items-center">
-                    <Text className="text-gray-500 dark:text-gray-400 mr-2">
-                      {expandedWatchlist === watchlist.id ? '▼' : '▶'}
-                    </Text>
-                    <TouchableOpacity
-                      onPress={() => handleDeleteWatchlist(watchlist.id, watchlist.name)}
-                      className="ml-2"
-                    >
-                      <Text className="text-red-500 text-lg">×</Text>
-                    </TouchableOpacity>
-                  </View>
-                </TouchableOpacity>
+                <View className="p-4 flex-row justify-between items-center">
+                  <TouchableOpacity
+                    onPress={() => toggleWatchlistExpansion(watchlist.id)}
+                    className="flex-1 flex-row justify-between items-center"
+                  >
+                    <View className="flex-1">
+                      <Text
+                        className="text-lg font-semibold"
+                        style={{ color: colors.text }}
+                      >
+                        {watchlist.name}
+                      </Text>
+                      <Text
+                        className="text-sm"
+                        style={{ color: colors.textSecondary }}
+                      >
+                        {watchlist.stocks.length} stocks
+                      </Text>
+                    </View>
+                    <Ionicons
+                      name={
+                        expandedWatchlist === watchlist.id
+                          ? 'chevron-down'
+                          : 'chevron-forward'
+                      }
+                      size={16}
+                      color={colors.textSecondary}
+                      style={{ marginRight: 8 }}
+                    />
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() =>
+                      handleDeleteWatchlist(watchlist.id, watchlist.name)
+                    }
+                    className="px-2 py-1 rounded-full ml-2"
+                    style={{
+                      backgroundColor: colors.error + '20',
+                    }}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <Ionicons name="close" size={18} color={colors.error} />
+                  </TouchableOpacity>
+                </View>
 
                 {/* Watchlist Stocks */}
                 {expandedWatchlist === watchlist.id && (
-                  <View className="border-t border-gray-100 dark:border-gray-700">
+                  <View
+                    className="border-t"
+                    style={{ borderTopColor: colors.borderSecondary }}
+                  >
                     {watchlist.stocks.length === 0 ? (
                       <View className="p-4 items-center">
-                        <Text className="text-gray-500 dark:text-gray-400 text-center">
+                        <Text
+                          className="text-center"
+                          style={{ color: colors.textSecondary }}
+                        >
                           No stocks in this watchlist yet
                         </Text>
-                        <Text className="text-gray-400 dark:text-gray-500 text-sm text-center mt-1">
+                        <Text
+                          className="text-xs text-center mt-1"
+                          style={{ color: colors.textTertiary }}
+                        >
                           Add stocks from the Explore screen
                         </Text>
                       </View>
                     ) : (
                       <View className="p-4">
-                        {watchlist.stocks.map((stock) => (
+                        {watchlist.stocks.map(stock => (
                           <View key={stock.id} className="mb-3">
-                            <StockCard stock={stock} onPress={handleStockPress} />
+                            <StockCard
+                              stock={stock}
+                              onPress={handleStockPress}
+                            />
                           </View>
                         ))}
                       </View>
@@ -189,19 +291,31 @@ export const WatchlistScreen: React.FC = () => {
         statusBarTranslucent={true}
       >
         <View className="flex-1 justify-center items-center bg-black/50">
-          <View className="bg-white dark:bg-gray-800 rounded-lg p-6 mx-4" style={{ width: 320 }}>
-            <Text className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+          <View
+            className="rounded-lg p-6 mx-4 w-80"
+            style={{
+              backgroundColor: colors.surface,
+            }}
+          >
+            <Text
+              className="text-xl font-bold mb-4"
+              style={{ color: colors.text }}
+            >
               Create New Watchlist
             </Text>
             <TextInput
               value={newWatchlistName}
               onChangeText={setNewWatchlistName}
               placeholder="Enter watchlist name"
-              placeholderTextColor="#9CA3AF"
-              className="border border-gray-300 dark:border-gray-600 rounded-lg p-3 mb-4 text-gray-900 dark:text-white"
+              placeholderTextColor={colors.textTertiary}
+              className="border rounded-lg p-3 mb-4"
+              style={{
+                borderColor: colors.border,
+                color: colors.text,
+              }}
               autoFocus
             />
-            <View className="flex-row justify-end" style={{ gap: 12 }}>
+            <View className="flex-row justify-end space-x-3">
               <TouchableOpacity
                 onPress={() => {
                   setShowCreateModal(false);
@@ -209,13 +323,22 @@ export const WatchlistScreen: React.FC = () => {
                 }}
                 className="px-4 py-2"
               >
-                <Text className="text-gray-600 dark:text-gray-400">Cancel</Text>
+                <Text style={{ color: colors.textSecondary }}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleCreateWatchlist}
-                className="bg-blue-500 px-4 py-2 rounded-lg"
+                className="px-4 py-2 rounded-lg border"
+                style={{
+                  backgroundColor: colors.primary,
+                  borderColor: colors.border,
+                }}
               >
-                <Text className="text-white font-medium">Create</Text>
+                <Text
+                  className="font-medium"
+                  style={{ color: colors.primaryText }}
+                >
+                  Create
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -223,4 +346,4 @@ export const WatchlistScreen: React.FC = () => {
       </Modal>
     </SafeAreaView>
   );
-}; 
+};

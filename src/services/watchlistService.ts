@@ -21,9 +21,14 @@ export const getWatchlists = async (): Promise<Watchlist[]> => {
   }
 };
 
-export const saveWatchlists = async (watchlists: Watchlist[]): Promise<void> => {
+export const saveWatchlists = async (
+  watchlists: Watchlist[]
+): Promise<void> => {
   try {
-    await AsyncStorage.setItem(WATCHLIST_STORAGE_KEY, JSON.stringify(watchlists));
+    await AsyncStorage.setItem(
+      WATCHLIST_STORAGE_KEY,
+      JSON.stringify(watchlists)
+    );
   } catch (error) {
     console.error('Error saving watchlists:', error);
   }
@@ -38,7 +43,7 @@ export const createWatchlist = async (name: string): Promise<Watchlist> => {
     createdAt: new Date(),
     updatedAt: new Date(),
   };
-  
+
   watchlists.push(newWatchlist);
   await saveWatchlists(watchlists);
   return newWatchlist;
@@ -51,16 +56,18 @@ export const addStockToWatchlist = async (
   try {
     const watchlists = await getWatchlists();
     const watchlistIndex = watchlists.findIndex(wl => wl.id === watchlistId);
-    
+
     if (watchlistIndex === -1) return false;
-    
+
     // Check if stock already exists in watchlist
-    const stockExists = watchlists[watchlistIndex].stocks.some(s => s.id === stock.id);
+    const stockExists = watchlists[watchlistIndex].stocks.some(
+      s => s.id === stock.id
+    );
     if (stockExists) return false;
-    
+
     watchlists[watchlistIndex].stocks.push(stock);
     watchlists[watchlistIndex].updatedAt = new Date();
-    
+
     await saveWatchlists(watchlists);
     return true;
   } catch (error) {
@@ -76,14 +83,14 @@ export const removeStockFromWatchlist = async (
   try {
     const watchlists = await getWatchlists();
     const watchlistIndex = watchlists.findIndex(wl => wl.id === watchlistId);
-    
+
     if (watchlistIndex === -1) return false;
-    
-    watchlists[watchlistIndex].stocks = watchlists[watchlistIndex].stocks.filter(
-      s => s.id !== stockId
-    );
+
+    watchlists[watchlistIndex].stocks = watchlists[
+      watchlistIndex
+    ].stocks.filter(s => s.id !== stockId);
     watchlists[watchlistIndex].updatedAt = new Date();
-    
+
     await saveWatchlists(watchlists);
     return true;
   } catch (error) {
@@ -92,7 +99,9 @@ export const removeStockFromWatchlist = async (
   }
 };
 
-export const deleteWatchlist = async (watchlistId: string): Promise<boolean> => {
+export const deleteWatchlist = async (
+  watchlistId: string
+): Promise<boolean> => {
   try {
     const watchlists = await getWatchlists();
     const filteredWatchlists = watchlists.filter(wl => wl.id !== watchlistId);
@@ -116,4 +125,4 @@ export const isStockInWatchlist = async (
     console.error('Error checking if stock is in watchlist:', error);
     return false;
   }
-}; 
+};

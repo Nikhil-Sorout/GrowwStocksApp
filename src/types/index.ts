@@ -12,6 +12,14 @@ export interface Stock {
   low: number;
   open: number;
   previousClose: number;
+  currency?: string;
+  timezone?: string;
+  region?: string;
+  marketOpen?: string;
+  marketClose?: string;
+  marketTimezone?: string;
+  exchange?: string;
+  country?: string;
 }
 
 export interface SearchResult {
@@ -72,10 +80,10 @@ export interface StockInfo {
   EVToRevenue: string;
   EVToEBITDA: string;
   Beta: string;
-  "52WeekHigh": string;
-  "52WeekLow": string;
-  "50DayMovingAverage": string;
-  "200DayMovingAverage": string;
+  '52WeekHigh': string;
+  '52WeekLow': string;
+  '50DayMovingAverage': string;
+  '200DayMovingAverage': string;
   SharesOutstanding: string;
   SharesFloat: string;
   PercentInsiders: string;
@@ -95,6 +103,18 @@ export interface Watchlist {
 export interface StockChartData {
   timestamp: number;
   price: number;
+  date: string; // Local timezone formatted date
+  dateStockTimezone: string; // Stock region timezone formatted date
+  open: number;
+  high: number;
+  low: number;
+  volume: number;
+}
+
+export interface ChartTimezoneData {
+  localDates: string[];
+  stockDates: string[];
+  prices: number[];
 }
 
 export interface ApiResponse<T> {
@@ -109,4 +129,4 @@ export type TabParamList = {
   Product: { stock: Stock };
   ViewAll: { type: 'gainers' | 'losers' | 'most_actively_traded' };
   DemoProduct: undefined;
-}; 
+};

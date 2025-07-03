@@ -1,10 +1,22 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  ActivityIndicator,
+  TouchableOpacity,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { StockCard } from '../components/StockCard';
-import { getTopGainers, getTopLosers, getMostActivelyTraded, getAllStocks } from '../services/stockService';
+import {
+  getTopGainers,
+  getTopLosers,
+  getMostActivelyTraded,
+  getAllStocks,
+} from '../services/stockService';
 import { Stock } from '../types';
+import { useTheme } from '../hooks/useTheme';
 
 interface ViewAllScreenRouteParams {
   type: 'gainers' | 'losers' | 'most_actively_traded' | 'all';
@@ -15,8 +27,9 @@ const ITEMS_PER_PAGE = 10;
 export const ViewAllScreen: React.FC = () => {
   const route = useRoute();
   const navigation = useNavigation();
+  const { colors } = useTheme();
   const { type } = route.params as ViewAllScreenRouteParams;
-  
+
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -30,10 +43,10 @@ export const ViewAllScreen: React.FC = () => {
     setLoading(true);
     setCurrentPage(1);
     setHasMoreData(true);
-    
+
     try {
       let stockData: Stock[] = [];
-      
+
       switch (type) {
         case 'gainers':
           stockData = await getTopGainers();
@@ -50,7 +63,7 @@ export const ViewAllScreen: React.FC = () => {
         default:
           stockData = await getAllStocks();
       }
-      
+
       setStocks(stockData);
       setHasMoreData(stockData.length > ITEMS_PER_PAGE);
     } catch (error) {
@@ -93,7 +106,9 @@ export const ViewAllScreen: React.FC = () => {
     if (!hasMoreData) {
       return (
         <View className="py-4 items-center">
-          <Text className="text-gray-500 dark:text-gray-400">No more stocks to load</Text>
+          <Text style={{ color: colors.textSecondary }}>
+            No more stocks to load
+          </Text>
         </View>
       );
     }
@@ -101,8 +116,10 @@ export const ViewAllScreen: React.FC = () => {
     if (loading) {
       return (
         <View className="py-4 items-center">
-          <ActivityIndicator size="small" color="#3B82F6" />
-          <Text className="mt-2 text-gray-500 dark:text-gray-400">Loading more...</Text>
+          <ActivityIndicator size="small" color={colors.primary} />
+          <Text className="mt-2" style={{ color: colors.textSecondary }}>
+            Loading more...
+          </Text>
         </View>
       );
     }
@@ -113,7 +130,9 @@ export const ViewAllScreen: React.FC = () => {
         className="py-4 items-center"
         activeOpacity={0.7}
       >
-        <Text className="text-blue-500 font-medium">Load More</Text>
+        <Text className="font-medium" style={{ color: colors.primary }}>
+          Load More
+        </Text>
       </TouchableOpacity>
     );
   };
@@ -135,29 +154,42 @@ export const ViewAllScreen: React.FC = () => {
 
   if (loading && stocks.length === 0) {
     return (
-      <SafeAreaView className="flex-1 bg-gray-50 dark:bg-gray-900">
+      <SafeAreaView
+        className="flex-1"
+        style={{ backgroundColor: colors.background }}
+      >
         <View className="flex-1 justify-center items-center">
-          <ActivityIndicator size="large" color="#3B82F6" />
-          <Text className="mt-4 text-gray-600 dark:text-gray-400">Loading stocks...</Text>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text className="mt-4" style={{ color: colors.textSecondary }}>
+            Loading stocks...
+          </Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-gray-50 dark:bg-gray-900">
+    <SafeAreaView
+      className="flex-1"
+      style={{ backgroundColor: colors.background }}
+    >
       {/* Header */}
-      <View className="flex-row items-center p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          className="mr-3"
-        >
-          <Text className="text-blue-500 text-lg">←</Text>
+      <View
+        className="flex-row items-center p-4 border-b"
+        style={{
+          backgroundColor: colors.surface,
+          borderBottomColor: colors.border,
+        }}
+      >
+        <TouchableOpacity onPress={() => navigation.goBack()} className="mr-3">
+          <Text className="text-lg" style={{ color: colors.primary }}>
+            ←
+          </Text>
         </TouchableOpacity>
-        <Text className="text-xl font-bold text-gray-900 dark:text-white">
+        <Text className="text-xl font-bold" style={{ color: colors.text }}>
           {getScreenTitle()}
         </Text>
-        <Text className="ml-2 text-gray-500 dark:text-gray-400">
+        <Text className="ml-2" style={{ color: colors.textSecondary }}>
           ({stocks.length} stocks)
         </Text>
       </View>
@@ -165,7 +197,7 @@ export const ViewAllScreen: React.FC = () => {
       <FlatList
         data={displayedStocks}
         renderItem={renderStockCard}
-        keyExtractor={(item) => item.id}
+        keyExtractor={item => item.id}
         numColumns={2}
         contentContainerStyle={{ padding: 16 }}
         showsVerticalScrollIndicator={false}
@@ -174,10 +206,10 @@ export const ViewAllScreen: React.FC = () => {
         ListFooterComponent={renderFooter}
         ListEmptyComponent={
           <View className="flex-1 justify-center items-center py-8">
-            <Text className="text-gray-500 dark:text-gray-400">No stocks found</Text>
+            <Text style={{ color: colors.textSecondary }}>No stocks found</Text>
           </View>
         }
       />
     </SafeAreaView>
   );
-}; 
+};
